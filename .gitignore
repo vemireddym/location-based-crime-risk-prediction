@@ -21,7 +21,7 @@ ENV/
 Thumbs.db
 
 # Data files (uncomment if datasets are large)
-# data/*.csv
+data/*.csv
 # Keep data directory structure
 !data/.gitkeep
 
