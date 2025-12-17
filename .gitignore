@@ -25,6 +25,9 @@ data/*.csv
 # Keep data directory structure
 !data/.gitkeep
 
+# Geocoding cache
+data/geocode_cache.json
+
 # Model files (if large)
 *.pkl
 *.joblib
