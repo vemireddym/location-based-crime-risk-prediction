@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data files (uncomment if datasets are large)
+# data/*.csv
+# Keep data directory structure
+!data/.gitkeep
+
+# Model files (if large)
+*.pkl
+*.joblib
+models/
+
+# Outputs (optional - you may want to track these)
+# outputs/*.png
+# outputs/*.txt
+
