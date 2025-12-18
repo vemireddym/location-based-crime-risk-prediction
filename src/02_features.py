@@ -16,7 +16,7 @@ def engineer_features(input_path='data/clean.csv', output_path='data/features.cs
     Engineer features from cleaned data:
     - Temporal features: hour, day_of_week, month
     - Location features: grid cell (binned lat/lon)
-    - Optional: past crime count per grid cell
+    - Historical features: past crime count, rolling window count
     
     Args:
         input_path: Path to cleaned data CSV
@@ -79,44 +79,64 @@ def engineer_features(input_path='data/clean.csv', output_path='data/features.cs
     print(f"  - Median crimes per cell: {grid_stats['50%']:.2f}")
     print(f"  - Max crimes per cell: {grid_stats['max']:.0f}")
     
-    # Optional: Calculate past crime count per grid cell
-    # This creates a rolling count of crimes in the same grid cell
+    # Calculate past crime count per grid cell (OPTIMIZED - vectorized)
     print("\nCalculating past crime count per grid cell...")
     
-    # Sort by date for rolling calculation
+    # Sort by date for cumulative calculation
     features_df = features_df.sort_values('date').reset_index(drop=True)
     
-    # For each grid cell, count previous crimes in a time window
-    # Using a simple approach: count crimes in same grid cell before current date
-    features_df['past_crime_count'] = 0
-    
-    # Group by grid cell and calculate cumulative count
-    for grid_cell in features_df['grid_cell'].unique():
-        mask = features_df['grid_cell'] == grid_cell
-        # Cumulative count minus current row (past crimes only)
-        features_df.loc[mask, 'past_crime_count'] = (
-            features_df.loc[mask].groupby('grid_cell').cumcount()
-        )
+    # Vectorized cumulative count per grid cell (much faster than row-by-row)
+    features_df['past_crime_count'] = features_df.groupby('grid_cell').cumcount()
     
     print(f"  - Past crime count range: {features_df['past_crime_count'].min()} to {features_df['past_crime_count'].max()}")
     print(f"  - Mean past crime count: {features_df['past_crime_count'].mean():.2f}")
     
-    # Alternative: Calculate crime count in time windows (e.g., last 30 days)
+    # Calculate rolling window crime count (OPTIMIZED - vectorized approach)
     print("\nCalculating rolling window crime count (last 30 days)...")
     
-    # Create a time-windowed count
-    features_df['crime_count_30d'] = 0
+    # Set date as index for rolling operations
+    features_df = features_df.sort_values('date')
     
-    # For each record, count crimes in same grid cell in last 30 days
-    for idx, row in features_df.iterrows():
-        date_threshold = row['date'] - pd.Timedelta(days=30)
-        mask = (
-            (features_df['grid_cell'] == row['grid_cell']) &
-            (features_df['date'] >= date_threshold) &
-            (features_df['date'] < row['date']) &
-            (features_df.index < idx)
-        )
-        features_df.loc[idx, 'crime_count_30d'] = mask.sum()
+    # Create a helper column for counting
+    features_df['count_helper'] = 1
+    
+    # Group by grid_cell and apply rolling count
+    # This is much faster than row-by-row iteration
+    def rolling_count_30d(group):
+        """Calculate 30-day rolling count for a single grid cell."""
+        group = group.sort_values('date')
+        group = group.set_index('date')
+        # Rolling count of crimes in last 30 days (excluding current row with closed='left')
+        rolling_counts = group['count_helper'].rolling('30D', closed='left').sum().fillna(0)
+        group['crime_count_30d'] = rolling_counts.values
+        group = group.reset_index()
+        return group
+    
+    print("  - Processing grid cells (this may take a moment)...")
+    
+    # Apply rolling count to each grid cell group
+    result_dfs = []
+    grid_cells = features_df['grid_cell'].unique()
+    total_cells = len(grid_cells)
+    
+    for i, grid_cell in enumerate(grid_cells):
+        if (i + 1) % 500 == 0 or i == 0:
+            print(f"  - Progress: {i + 1}/{total_cells} grid cells processed...")
+        
+        group = features_df[features_df['grid_cell'] == grid_cell].copy()
+        group = group.sort_values('date').set_index('date')
+        
+        # Rolling count with 30-day window (excluding current observation)
+        rolling_counts = group['count_helper'].rolling('30D', closed='left').sum().fillna(0)
+        group['crime_count_30d'] = rolling_counts.astype(int)
+        group = group.reset_index()
+        result_dfs.append(group)
+    
+    # Combine all results
+    features_df = pd.concat(result_dfs, ignore_index=True)
+    
+    # Drop helper column
+    features_df = features_df.drop(columns=['count_helper'])
     
     print(f"  - 30-day crime count range: {features_df['crime_count_30d'].min()} to {features_df['crime_count_30d'].max()}")
     print(f"  - Mean 30-day crime count: {features_df['crime_count_30d'].mean():.2f}")
@@ -167,4 +187,3 @@ if __name__ == "__main__":
         print("Feature engineering failed. Please check the error messages above.")
         print("=" * 60)
         sys.exit(1)
-
