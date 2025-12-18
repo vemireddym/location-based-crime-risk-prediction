@@ -1,0 +1,61 @@
+============================================================
+MODEL EVALUATION RESULTS
+============================================================
+
+Dataset Information:
+  Total samples: 634055
+  Training samples: 507244
+  Test samples: 126811
+  Features: 8
+  Classes: ['High', 'Low', 'Medium']
+
+============================================================
+RANDOM FOREST (Main Model)
+============================================================
+Training Accuracy: 1.0000
+Test Accuracy: 1.0000
+Training F1-score (macro): 1.0000
+Test F1-score (macro): 1.0000
+
+Per-class F1-scores:
+  High: 1.0000
+  Low: 1.0000
+  Medium: 1.0000
+
+Confusion Matrix:
+[[ 8902     0     0]
+ [    0 90105     0]
+ [    0     0 27804]]
+
+============================================================
+LOGISTIC REGRESSION (Comparison Model)
+============================================================
+Training Accuracy: 0.9037
+Test Accuracy: 0.9030
+Training F1-score (macro): 0.8790
+Test F1-score (macro): 0.8779
+
+Per-class F1-scores:
+  High: 0.8729
+  Low: 0.9301
+  Medium: 0.8306
+
+Confusion Matrix:
+[[ 8663   239     0]
+ [ 2284 81876  5945]
+ [    0  3833 23971]]
+
+============================================================
+MODEL COMPARISON
+============================================================
+Test Accuracy:
+  Random Forest: 1.0000
+  Logistic Regression: 0.9030
+  Difference: 0.0970
+
+Test F1-score (macro):
+  Random Forest: 1.0000
+  Logistic Regression: 0.8779
+  Difference: 0.1221
+
+Winner: Random Forest (higher accuracy and F1-score)
