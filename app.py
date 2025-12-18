@@ -528,6 +528,7 @@ def main():
     <div style='text-align: center; color: #666; padding: 20px;'>
         <p>🚨 Crime Risk Prediction System | Built with Streamlit</p>
         <p>⚠️ This is a prediction tool based on historical data. Actual crime risk may vary.</p>
+        <p style='margin-top: 15px; font-size: 0.9rem;'>© 2025 Vemireddy. All Rights Reserved.</p>
     </div>
     """, unsafe_allow_html=True)
 

@@ -183,3 +183,7 @@ CS549 Final Project
 ## 📄 License
 
 This project is for educational purposes.
+
+---
+
+© 2025 Vemireddy. All Rights Reserved.
