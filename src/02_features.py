@@ -8,7 +8,7 @@ def engineer_features(input_path='data/clean.csv', output_path='data/features.cs
         print(f"Error: {input_path} not found")
         return None
     
-    df = pd.read_csv(input_path)
+    df = pd.read_csv(input_path, low_memory=False)
     df['date'] = pd.to_datetime(df['date'])
     
     features_df = df[['date', 'location', 'city', 'state', 'crime_type']].copy()
@@ -19,12 +19,13 @@ def engineer_features(input_path='data/clean.csv', output_path='data/features.cs
     features_df['year'] = df['date'].dt.year
     
     location_encoder = LabelEncoder()
-    features_df['location_encoded'] = location_encoder.fit_transform(features_df['location'])
+    features_df['location_encoded'] = location_encoder.fit_transform(features_df['location'].astype(str))
     
     crime_type_encoder = LabelEncoder()
-    features_df['crime_type_encoded'] = crime_type_encoder.fit_transform(
-        features_df['crime_type'].fillna('Unknown')
-    )
+    features_df['crime_type'] = features_df['crime_type'].astype(str)
+    features_df['crime_type'] = features_df['crime_type'].replace('nan', 'Unknown')
+    features_df['crime_type'] = features_df['crime_type'].fillna('Unknown')
+    features_df['crime_type_encoded'] = crime_type_encoder.fit_transform(features_df['crime_type'])
     
     crime_type_counts = features_df.groupby('location')['crime_type'].value_counts().reset_index(name='crime_type_frequency')
     features_df = features_df.merge(
