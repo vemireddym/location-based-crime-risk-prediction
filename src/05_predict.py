@@ -8,15 +8,48 @@ from datetime import datetime
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def load_models(model_dir='outputs'):
-    with open(os.path.join(model_dir, 'risk_model.pkl'), 'rb') as f:
-        risk_model = pickle.load(f)
-    with open(os.path.join(model_dir, 'crime_model.pkl'), 'rb') as f:
-        crime_model = pickle.load(f)
-    with open(os.path.join(model_dir, 'risk_encoder.pkl'), 'rb') as f:
-        risk_encoder = pickle.load(f)
-    with open(os.path.join(model_dir, 'crime_encoder.pkl'), 'rb') as f:
-        crime_encoder = pickle.load(f)
-    return risk_model, crime_model, risk_encoder, crime_encoder
+    required_files = {
+        'risk_model': 'risk_model.pkl',
+        'crime_model': 'crime_model.pkl',
+        'risk_encoder': 'risk_encoder.pkl',
+        'crime_encoder': 'crime_encoder.pkl'
+    }
+    
+    models = {}
+    
+    for name, filename in required_files.items():
+        filepath = os.path.join(model_dir, filename)
+        
+        if not os.path.exists(filepath):
+            raise FileNotFoundError(
+                f"Model file not found: {filepath}\n"
+                f"Please run the training script (src/04_train_eval.py) first to generate model files."
+            )
+        
+        file_size = os.path.getsize(filepath)
+        if file_size == 0:
+            raise ValueError(
+                f"Model file is empty: {filepath}\n"
+                f"The file exists but contains no data. Please retrain the model."
+            )
+        
+        try:
+            with open(filepath, 'rb') as f:
+                models[name] = pickle.load(f)
+        except pickle.UnpicklingError as e:
+            raise ValueError(
+                f"Error loading model file: {filepath}\n"
+                f"The file appears to be corrupted or incomplete (size: {file_size} bytes).\n"
+                f"Please retrain the model by running: python src/04_train_eval.py\n"
+                f"Original error: {str(e)}"
+            )
+        except Exception as e:
+            raise RuntimeError(
+                f"Unexpected error loading {filepath}: {str(e)}\n"
+                f"Please check the file and retrain if necessary."
+            )
+    
+    return models['risk_model'], models['crime_model'], models['risk_encoder'], models['crime_encoder']
 
 def load_location_encoder():
     features_path = 'data/features.csv'
