@@ -43,6 +43,8 @@ def get_crime_statistics(location, features_path='data/features.csv'):
     
     crime_freq = {}
     for crime_type, count in crime_counts.items():
+        if pd.isna(crime_type) or crime_type == 'nan' or str(crime_type) == 'nan':
+            continue
         freq_pct = (count / total_crimes) * 100
         if freq_pct > 30:
             freq_label = 'Very Common'
@@ -59,10 +61,14 @@ def get_crime_statistics(location, features_path='data/features.csv'):
             'frequency': freq_label
         }
     
+    most_common = None
+    if len(crime_counts) > 0:
+        most_common = list(crime_counts.keys())[0]
+    
     return {
         'total_crimes': total_crimes,
         'crime_frequency': crime_freq,
-        'most_common': crime_counts.most_common(1)[0][0] if len(crime_counts) > 0 else None
+        'most_common': most_common
     }
 
 def create_features_from_input(location, day_of_week, hour, month, year):
@@ -123,19 +129,140 @@ def predict_comprehensive(location, day_of_week, hour, month=None, year=None, mo
     
     return result
 
+def format_percentage(value):
+    return f"{value * 100:.1f}%"
+
+def format_number(num):
+    return f"{num:,}"
+
+def create_bar_chart(value, max_value=1.0, width=20):
+    filled = int((value / max_value) * width)
+    return "█" * filled
+
+def print_section_header(title, width=80):
+    print("\n" + "=" * width)
+    print(f"{title:^{width}}")
+    print("=" * width)
+
+def print_subsection_header(title, width=80):
+    print("\n" + title)
+    print("─" * width)
+
 if __name__ == "__main__":
     import sys
     
-    if len(sys.argv) > 1:
-        location = sys.argv[1]
-        day = int(sys.argv[2]) if len(sys.argv) > 2 else 0
-        hour = int(sys.argv[3]) if len(sys.argv) > 3 else 12
+    if len(sys.argv) < 2:
+        print("=" * 80)
+        print("CRIME RISK PREDICTION SYSTEM - USAGE".center(80))
+        print("=" * 80)
+        print("\nUsage: python 05_predict.py <location> <day_of_week> <hour> [month] [year]")
+        print("\nArguments:")
+        print("  location      : City and State in quotes (e.g., 'Chicago, IL')")
+        print("  day_of_week   : Day of week (0-6)")
+        print("                 0 = Monday, 1 = Tuesday, 2 = Wednesday, 3 = Thursday")
+        print("                 4 = Friday, 5 = Saturday, 6 = Sunday")
+        print("  hour          : Hour of day in 24-hour format (0-23)")
+        print("                 0 = Midnight, 12 = Noon, 23 = 11:00 PM")
+        print("  month         : Month (1-12), optional, defaults to current month")
+        print("                 1 = January, 12 = December")
+        print("  year          : Year (4 digits), optional, defaults to current year")
+        print("\nExamples:")
+        print("  python 05_predict.py 'Chicago, IL' 0 14")
+        print("  python 05_predict.py 'Chicago, IL' 0 14 3 2024")
+        print("  python 05_predict.py 'Los Angeles, CA' 5 20 12 2023")
+        print("\n" + "=" * 80)
+        sys.exit(1)
+    
+    location = sys.argv[1]
+    day_of_week = int(sys.argv[2]) if len(sys.argv) > 2 else 0
+    hour = int(sys.argv[3]) if len(sys.argv) > 3 else 12
+    month = int(sys.argv[4]) if len(sys.argv) > 4 else None
+    year = int(sys.argv[5]) if len(sys.argv) > 5 else None
+    
+    if day_of_week < 0 or day_of_week > 6:
+        print(f"Error: day_of_week must be between 0-6, got {day_of_week}")
+        print("  0 = Monday, 1 = Tuesday, 2 = Wednesday, 3 = Thursday")
+        print("  4 = Friday, 5 = Saturday, 6 = Sunday")
+        sys.exit(1)
+    
+    if hour < 0 or hour > 23:
+        print(f"Error: hour must be between 0-23, got {hour}")
+        sys.exit(1)
+    
+    if month is not None and (month < 1 or month > 12):
+        print(f"Error: month must be between 1-12, got {month}")
+        sys.exit(1)
+    
+    day_names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    month_names = ['January', 'February', 'March', 'April', 'May', 'June',
+                   'July', 'August', 'September', 'October', 'November', 'December']
+    
+    result = predict_comprehensive(location, day_of_week, hour, month, year)
+    
+    print_section_header("CRIME RISK PREDICTION SYSTEM")
+    
+    print_subsection_header("INPUT PARAMETERS")
+    print(f"Location:        {location}")
+    print(f"Day of Week:     {day_names[day_of_week]} ({day_of_week})")
+    hour_12 = hour % 12
+    hour_12 = 12 if hour_12 == 0 else hour_12
+    am_pm = "AM" if hour < 12 else "PM"
+    print(f"Hour:            {hour:02d}:00 ({hour_12}:00 {am_pm})")
+    if month:
+        print(f"Month:           {month_names[month-1]} ({month})")
+    if year:
+        print(f"Year:            {year}")
+    
+    print_section_header("PREDICTION RESULTS")
+    
+    risk_level = result['risk_level']
+    risk_symbol = "⚠️" if risk_level == "High" else "⚡" if risk_level == "Medium" else "✓"
+    print(f"\nRISK LEVEL: [{risk_level.upper()}] {risk_symbol}")
+    print_subsection_header("")
+    
+    risk_probs = result['risk_probabilities']
+    predicted_risk = result['risk_level']
+    for risk in ['Low', 'Medium', 'High']:
+        prob = risk_probs.get(risk, 0)
+        marker = "  ← PREDICTED" if risk == predicted_risk else ""
+        print(f"{risk:12s} Risk:  {format_percentage(prob):>6s}{marker}")
+    
+    print_subsection_header("")
+    crime_type = result['predicted_crime_type']
+    crime_conf = result['crime_type_probability']
+    print(f"PREDICTED CRIME TYPE: {crime_type}")
+    print(f"Confidence: {format_percentage(crime_conf)}")
+    print_subsection_header("")
+    
+    crime_probs = result['crime_type_probabilities']
+    sorted_crimes = sorted(crime_probs.items(), key=lambda x: x[1], reverse=True)
+    top_crimes = sorted_crimes[:10]
+    max_prob = max(crime_probs.values()) if crime_probs else 1.0
+    
+    print("Top Crime Type Probabilities:")
+    for crime, prob in top_crimes:
+        bar = create_bar_chart(prob, max_prob, 20)
+        print(f"  {crime:20s}  {format_percentage(prob):>6s}  {bar}")
+    
+    print_section_header("HISTORICAL STATISTICS")
+    
+    stats = result['crime_statistics']
+    if stats:
+        total = stats.get('total_crimes', 0)
+        most_common = stats.get('most_common', 'N/A')
+        print(f"Total Crimes in History: {format_number(total)}")
+        print(f"Most Common Crime Type: {most_common}")
         
-        result = predict_comprehensive(location, day, hour)
-        print(f"Location: {location}")
-        print(f"Risk Level: {result['risk_level']}")
-        print(f"Predicted Crime Type: {result['predicted_crime_type']}")
-        print(f"Crime Statistics: {result['crime_statistics']}")
+        crime_freq = stats.get('crime_frequency', {})
+        if crime_freq:
+            print("\nTop Crime Types by Frequency:")
+            sorted_freq = sorted(crime_freq.items(), key=lambda x: x[1]['count'], reverse=True)
+            for crime, info in sorted_freq[:10]:
+                count = info['count']
+                pct = info['percentage']
+                freq_label = info['frequency']
+                print(f"  {crime:20s}  {format_number(count):>8s} ({pct:5.1f}%)  [{freq_label}]")
     else:
-        print("Usage: python 05_predict.py <location> <day_of_week> <hour>")
-        print("Example: python 05_predict.py 'Chicago, IL' 0 14")
+        print("No historical statistics available for this location.")
+    
+    print("\n" + "=" * 80)
