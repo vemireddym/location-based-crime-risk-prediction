@@ -8,6 +8,24 @@ def find_column(df, keywords):
             return col
     return None
 
+def extract_city_state_from_filename(filename):
+    city_state_map = {
+        'chicago': ('Chicago', 'IL'),
+        'la': ('Los Angeles', 'CA'),
+        'los angeles': ('Los Angeles', 'CA'),
+        'boston': ('Boston', 'MA'),
+        'philly': ('Philadelphia', 'PA'),
+        'philadelphia': ('Philadelphia', 'PA'),
+        'new york': ('New York', 'NY'),
+        'ny': ('New York', 'NY')
+    }
+    
+    filename_lower = filename.lower()
+    for key, (city, state) in city_state_map.items():
+        if key in filename_lower:
+            return city, state
+    return None, None
+
 def load_and_standardize_dataset(filepath):
     try:
         df = pd.read_csv(filepath, low_memory=False)
@@ -18,7 +36,11 @@ def load_and_standardize_dataset(filepath):
             return None, {}
     
     missing_cols = {}
+    auto_filled = {}
     clean_df = pd.DataFrame()
+    
+    filename = os.path.basename(filepath)
+    default_city, default_state = extract_city_state_from_filename(filename)
     
     date_col = find_column(df, ['date', 'datetime', 'occurred'])
     year_col = find_column(df, ['year'])
@@ -57,16 +79,24 @@ def load_and_standardize_dataset(filepath):
             missing_cols['time'] = True
     
     if city_col:
-        clean_df['city'] = df[city_col].astype(str).str.strip()
+        clean_df['city'] = df[city_col].astype(str).str.strip().replace('nan', pd.NA)
     else:
-        clean_df['city'] = None
-        missing_cols['city'] = True
+        if default_city:
+            clean_df['city'] = default_city
+            auto_filled['city'] = f'Auto-filled: {default_city}'
+        else:
+            clean_df['city'] = pd.NA
+            missing_cols['city'] = True
     
     if state_col:
-        clean_df['state'] = df[state_col].astype(str).str.strip()
+        clean_df['state'] = df[state_col].astype(str).str.strip().replace('nan', pd.NA)
     else:
-        clean_df['state'] = None
-        missing_cols['state'] = True
+        if default_state:
+            clean_df['state'] = default_state
+            auto_filled['state'] = f'Auto-filled: {default_state}'
+        else:
+            clean_df['state'] = pd.NA
+            missing_cols['state'] = True
     
     clean_df['location'] = clean_df['city'].astype(str) + ', ' + clean_df['state'].astype(str)
     clean_df['location'] = clean_df['location'].replace('nan, nan', None)
@@ -81,7 +111,7 @@ def load_and_standardize_dataset(filepath):
     clean_df = clean_df[clean_df['location'] != 'nan, nan']
     clean_df = clean_df[clean_df['location'].notna()]
     
-    return clean_df, missing_cols
+    return clean_df, missing_cols, auto_filled
 
 def create_super_dataset(input_paths=None, output_path='data/super_dataset.csv'):
     if input_paths is None:
@@ -95,14 +125,17 @@ def create_super_dataset(input_paths=None, output_path='data/super_dataset.csv')
     
     all_data = []
     missing_summary = {}
+    auto_filled_summary = {}
     
     for path in input_paths:
         if os.path.exists(path):
             print(f"Processing {path}...")
-            df, missing = load_and_standardize_dataset(path)
+            df, missing, auto_filled = load_and_standardize_dataset(path)
             if df is not None and len(df) > 0:
                 all_data.append(df)
                 missing_summary[os.path.basename(path)] = missing
+                if auto_filled:
+                    auto_filled_summary[os.path.basename(path)] = auto_filled
                 print(f"  Loaded {len(df)} records")
             else:
                 print(f"  Skipped {path} (no valid data)")
@@ -126,16 +159,21 @@ def create_super_dataset(input_paths=None, output_path='data/super_dataset.csv')
     print(f"Unique crime types: {combined['crime_type'].nunique()}")
     
     print(f"\n{'='*60}")
-    print("Missing Columns Summary")
+    print("Column Status Summary")
     print(f"{'='*60}")
     for filename, missing in missing_summary.items():
+        if filename in auto_filled_summary:
+            print(f"{filename}:")
+            for col, msg in auto_filled_summary[filename].items():
+                print(f"  - {col}: {msg}")
         if missing:
             missing_list = [col for col in missing.keys() if missing[col]]
             if missing_list:
-                print(f"{filename}:")
+                if filename not in auto_filled_summary:
+                    print(f"{filename}:")
                 for col in missing_list:
                     print(f"  - {col} column missing (filled with null)")
-        else:
+        elif filename not in auto_filled_summary:
             print(f"{filename}: All columns present")
     
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
