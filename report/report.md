@@ -14,17 +14,23 @@ Predict Risk Level (Low/Medium/High) for a given location (latitude, longitude) 
 
 ### Dataset Description
 
-The project uses a crime dataset from Kaggle containing historical crime records with location and temporal information. The dataset includes:
+The project uses multiple crime datasets from Kaggle containing historical crime records with precise location coordinates and temporal information. The datasets include:
 
 - **Date/Time**: Timestamp of crime incidents
-- **Location**: Latitude and longitude coordinates
+- **Location**: Precise latitude and longitude coordinates for each incident
 - **Crime Type**: Primary type of crime (optional, for analysis)
 
-### Dataset Link
+### Dataset Links
 
-**Kaggle Crime Dataset**: [Please insert your Kaggle dataset link here]
+1. **Chicago Crime Data**: https://www.kaggle.com/datasets/currie32/crimes-in-chicago
+   - Contains precise lat/lon coordinates for each crime incident
+   - Large dataset with detailed location information
 
-*Note: The dataset should be downloaded and saved as `data/crime.csv` before running the data pipeline.*
+2. **San Francisco Crime Data**: https://www.kaggle.com/datasets/wosaku/crime-in-san-francisco
+   - Contains precise coordinates (X/Y columns)
+   - Medium-sized dataset with comprehensive crime records
+
+*Note: Datasets should be downloaded and saved as `data/chicago_crime.csv` and `data/sf_crime.csv` before running the data pipeline. See DATASET_DOWNLOAD.md for instructions.*
 
 ### Data Characteristics
 
@@ -32,6 +38,7 @@ The project uses a crime dataset from Kaggle containing historical crime records
 - **Required Columns**: date/time, latitude, longitude
 - **Optional Columns**: primary_type, category
 - **Preprocessing**: Missing values in essential columns are removed, invalid coordinates are filtered out
+- **Location Precision**: Datasets contain precise coordinates (not city-level), enabling accurate location-based predictions
 
 ### Data Processing Pipeline
 
