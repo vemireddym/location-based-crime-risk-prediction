@@ -18,7 +18,7 @@ def train_and_evaluate(input_path='data/model_ready.csv', output_dir='outputs', 
         print(f"Error: {input_path} not found")
         return None
     
-    df = pd.read_csv(input_path)
+    df = pd.read_csv(input_path, low_memory=False)
     print(f"Loaded {len(df)} records")
     
     feature_cols = [c for c in df.columns if c not in ['risk_level', 'crime_type', 'most_common_crime_type']]

@@ -7,7 +7,7 @@ def load_and_clean_data(input_path='data/super_dataset.csv', output_path='data/c
         print(f"Error: {input_path} not found. Run 00_create_super_dataset.py first.")
         return None
     
-    df = pd.read_csv(input_path)
+    df = pd.read_csv(input_path, low_memory=False)
     df['date'] = pd.to_datetime(df['date'], errors='coerce')
     
     df = df.dropna(subset=['date', 'location'])

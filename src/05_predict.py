@@ -21,7 +21,7 @@ def load_models(model_dir='outputs'):
 def load_location_encoder():
     features_path = 'data/features.csv'
     if os.path.exists(features_path):
-        df = pd.read_csv(features_path)
+        df = pd.read_csv(features_path, low_memory=False)
         from sklearn.preprocessing import LabelEncoder
         le = LabelEncoder()
         le.fit(df['location'].unique())
@@ -32,7 +32,7 @@ def get_crime_statistics(location, features_path='data/features.csv'):
     if not os.path.exists(features_path):
         return {}
     
-    df = pd.read_csv(features_path)
+    df = pd.read_csv(features_path, low_memory=False)
     location_data = df[df['location'] == location]
     
     if len(location_data) == 0:

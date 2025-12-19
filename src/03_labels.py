@@ -7,7 +7,7 @@ def create_labels(input_path='data/features.csv', output_path='data/model_ready.
         print(f"Error: {input_path} not found")
         return None
     
-    df = pd.read_csv(input_path)
+    df = pd.read_csv(input_path, low_memory=False)
     df['date'] = pd.to_datetime(df['date'])
     df = df.sort_values('date').reset_index(drop=True)
     
