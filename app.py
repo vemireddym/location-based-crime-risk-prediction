@@ -264,6 +264,37 @@ def main():
             risk_map = create_map(lat, lon, result['risk_level'], location)
             st_folium(risk_map, width=None, height=400)
         
+    except FileNotFoundError as e:
+        st.error("⚠️ Model files not found!")
+        st.warning(
+            "The prediction models have not been trained yet. Please run the training pipeline:\n\n"
+            "1. Run the data pipeline:\n"
+            "   ```bash\n"
+            "   python src/00_create_super_dataset.py\n"
+            "   python src/01_load_clean.py\n"
+            "   python src/02_features.py\n"
+            "   python src/03_labels.py\n"
+            "   ```\n\n"
+            "2. Train the models:\n"
+            "   ```bash\n"
+            "   python src/04_train_eval.py\n"
+            "   ```\n\n"
+            "This will generate the required model files in the `outputs/` directory."
+        )
+        st.error(f"Technical details: {str(e)}")
+    except ValueError as e:
+        error_msg = str(e)
+        if "corrupted" in error_msg.lower() or "incomplete" in error_msg.lower():
+            st.error("⚠️ Model files are corrupted!")
+            st.warning(
+                "The model files appear to be corrupted or incomplete. Please retrain the models:\n\n"
+                "```bash\n"
+                "python src/04_train_eval.py\n"
+                "```\n\n"
+                "This will regenerate the model files."
+            )
+        else:
+            st.error(f"Error: {error_msg}")
     except Exception as e:
         st.error(f"Error making prediction: {e}")
         st.info("Make sure the models are trained. Run the training pipeline first.")

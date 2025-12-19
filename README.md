@@ -72,9 +72,14 @@ Your app will be available at: `https://your-username-your-repo.streamlit.app`
 
 ## 📊 Data Pipeline
 
+**⚠️ Important:** You must run the training pipeline before using the web app or prediction script. The model files will be generated in the `outputs/` directory.
+
 Run the scripts in order to train the model:
 
 ```bash
+# Step 0: Create super dataset (merge all city datasets)
+python src/00_create_super_dataset.py
+
 # Step 1: Load and clean data
 python src/01_load_clean.py
 
@@ -84,9 +89,17 @@ python src/02_features.py
 # Step 3: Create labels
 python src/03_labels.py
 
-# Step 4: Train and evaluate models
+# Step 4: Train and evaluate models (REQUIRED for predictions)
 python src/04_train_eval.py
 ```
+
+After running Step 4, you should have these files in the `outputs/` directory:
+- `risk_model.pkl`
+- `crime_model.pkl`
+- `risk_encoder.pkl`
+- `crime_encoder.pkl`
+- `confusion_matrix.png`
+- `results.txt`
 
 ## 🔮 Make Predictions
 
