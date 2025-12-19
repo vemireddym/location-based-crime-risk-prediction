@@ -35,4 +35,6 @@ models/
 # Outputs - these are tracked (results, models, visualizations)
 # outputs/*.png
 # outputs/*.txt
+# Allow model files in outputs/ (needed for Streamlit app)
+!outputs/*.pkl
 

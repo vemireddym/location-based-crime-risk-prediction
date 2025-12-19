@@ -62,13 +62,26 @@ The app will open in your browser at `http://localhost:8501`
 
 ### Deploy to Streamlit Cloud
 
-1. Push your code to GitHub
+**Important:** Model files are too large for GitHub (816MB). Streamlit Cloud will train models during deployment.
+
+1. Push your code to GitHub (without model files)
 2. Go to [share.streamlit.io](https://share.streamlit.io)
 3. Connect your GitHub repository
 4. Select `app.py` as the main file
-5. Click **Deploy**
+5. **Add setup command** (in Advanced settings):
+   ```bash
+   bash setup.sh
+   ```
+   Or manually set up:
+   - Add `setup.sh` to run before app starts
+   - Or run training pipeline in Streamlit Cloud's setup
+6. Click **Deploy**
+
+**Note:** First deployment will take longer as it trains the models. Subsequent deployments will be faster if models are cached.
 
 Your app will be available at: `https://your-username-your-repo.streamlit.app`
+
+**Alternative:** For faster deployments, use Git LFS to store model files (see `GIT_LFS_SETUP.md`)
 
 ## 📊 Data Pipeline
 
