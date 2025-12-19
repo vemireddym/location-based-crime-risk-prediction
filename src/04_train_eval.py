@@ -21,80 +21,64 @@ def train_and_evaluate(input_path='data/model_ready.csv', output_dir='outputs', 
     df = pd.read_csv(input_path)
     print(f"Loaded {len(df)} records")
     
-    feature_cols = [c for c in df.columns if c != 'risk_level']
+    feature_cols = [c for c in df.columns if c not in ['risk_level', 'crime_type', 'most_common_crime_type']]
     X = df[feature_cols]
-    y = df['risk_level']
+    y_risk = df['risk_level']
+    y_crime = df['crime_type'].fillna('Unknown')
     
-    label_encoder = LabelEncoder()
-    y_encoded = label_encoder.fit_transform(y)
+    risk_encoder = LabelEncoder()
+    crime_encoder = LabelEncoder()
+    y_risk_encoded = risk_encoder.fit_transform(y_risk)
+    y_crime_encoded = crime_encoder.fit_transform(y_crime)
     
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y_encoded, test_size=test_size, random_state=RANDOM_STATE, stratify=y_encoded
+    X_train, X_test, y_risk_train, y_risk_test, y_crime_train, y_crime_test = train_test_split(
+        X, y_risk_encoded, y_crime_encoded, test_size=test_size, random_state=RANDOM_STATE, stratify=y_risk_encoded
     )
     
     os.makedirs(output_dir, exist_ok=True)
     
-    rf_model = RandomForestClassifier(
-        n_estimators=100,
-        max_depth=20,
-        min_samples_split=5,
-        min_samples_leaf=2,
-        random_state=RANDOM_STATE,
-        n_jobs=-1,
-        class_weight='balanced'
+    print("\nTraining Risk Level Model...")
+    rf_risk = RandomForestClassifier(
+        n_estimators=100, max_depth=20, min_samples_split=5,
+        min_samples_leaf=2, random_state=RANDOM_STATE, n_jobs=-1, class_weight='balanced'
     )
+    rf_risk.fit(X_train, y_risk_train)
+    risk_pred = rf_risk.predict(X_test)
+    risk_acc = accuracy_score(y_risk_test, risk_pred)
+    risk_f1 = f1_score(y_risk_test, risk_pred, average='macro')
+    print(f"Risk Model - Accuracy: {risk_acc:.4f}, F1: {risk_f1:.4f}")
     
-    rf_model.fit(X_train, y_train)
-    y_pred_rf = rf_model.predict(X_test)
-    
-    test_acc_rf = accuracy_score(y_test, y_pred_rf)
-    test_f1_rf = f1_score(y_test, y_pred_rf, average='macro')
-    
-    print(f"Random Forest - Accuracy: {test_acc_rf:.4f}, F1: {test_f1_rf:.4f}")
-    
-    with open(os.path.join(output_dir, 'random_forest_model.pkl'), 'wb') as f:
-        pickle.dump(rf_model, f)
-    
-    scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
-    
-    lr_model = LogisticRegression(
-        max_iter=1000,
-        random_state=RANDOM_STATE,
-        class_weight='balanced',
-        multi_class='multinomial',
-        solver='lbfgs'
+    print("\nTraining Crime Type Model...")
+    rf_crime = RandomForestClassifier(
+        n_estimators=100, max_depth=20, min_samples_split=5,
+        min_samples_leaf=2, random_state=RANDOM_STATE, n_jobs=-1, class_weight='balanced'
     )
+    rf_crime.fit(X_train, y_crime_train)
+    crime_pred = rf_crime.predict(X_test)
+    crime_acc = accuracy_score(y_crime_test, crime_pred)
+    crime_f1 = f1_score(y_crime_test, crime_pred, average='macro')
+    print(f"Crime Type Model - Accuracy: {crime_acc:.4f}, F1: {crime_f1:.4f}")
     
-    lr_model.fit(X_train_scaled, y_train)
-    y_pred_lr = lr_model.predict(X_test_scaled)
-    
-    test_acc_lr = accuracy_score(y_test, y_pred_lr)
-    test_f1_lr = f1_score(y_test, y_pred_lr, average='macro')
-    
-    print(f"Logistic Regression - Accuracy: {test_acc_lr:.4f}, F1: {test_f1_lr:.4f}")
-    
-    with open(os.path.join(output_dir, 'logistic_regression_model.pkl'), 'wb') as f:
-        pickle.dump(lr_model, f)
-    with open(os.path.join(output_dir, 'scaler.pkl'), 'wb') as f:
-        pickle.dump(scaler, f)
-    with open(os.path.join(output_dir, 'label_encoder.pkl'), 'wb') as f:
-        pickle.dump(label_encoder, f)
-    
-    cm_rf = confusion_matrix(y_test, y_pred_rf)
-    cm_lr = confusion_matrix(y_test, y_pred_lr)
+    with open(os.path.join(output_dir, 'risk_model.pkl'), 'wb') as f:
+        pickle.dump(rf_risk, f)
+    with open(os.path.join(output_dir, 'crime_model.pkl'), 'wb') as f:
+        pickle.dump(rf_crime, f)
+    with open(os.path.join(output_dir, 'risk_encoder.pkl'), 'wb') as f:
+        pickle.dump(risk_encoder, f)
+    with open(os.path.join(output_dir, 'crime_encoder.pkl'), 'wb') as f:
+        pickle.dump(crime_encoder, f)
     
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-    class_names = label_encoder.classes_
     
-    sns.heatmap(cm_rf, annot=True, fmt='d', cmap='Blues', 
-                xticklabels=class_names, yticklabels=class_names, ax=axes[0])
-    axes[0].set_title('Random Forest')
+    cm_risk = confusion_matrix(y_risk_test, risk_pred)
+    sns.heatmap(cm_risk, annot=True, fmt='d', cmap='Blues',
+                xticklabels=risk_encoder.classes_, yticklabels=risk_encoder.classes_, ax=axes[0])
+    axes[0].set_title('Risk Level Model')
     
-    sns.heatmap(cm_lr, annot=True, fmt='d', cmap='Greens',
-                xticklabels=class_names, yticklabels=class_names, ax=axes[1])
-    axes[1].set_title('Logistic Regression')
+    top_crimes = pd.Series(crime_encoder.classes_).value_counts().head(10)
+    crime_cm = confusion_matrix(y_crime_test, crime_pred)
+    sns.heatmap(crime_cm[:10, :10], annot=True, fmt='d', cmap='Greens', ax=axes[1])
+    axes[1].set_title('Crime Type Model (Top 10)')
     
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, 'confusion_matrix.png'), dpi=300, bbox_inches='tight')
@@ -106,12 +90,12 @@ def train_and_evaluate(input_path='data/model_ready.csv', output_dir='outputs', 
         f.write(f"Total samples: {len(X)}\n")
         f.write(f"Training samples: {len(X_train)}\n")
         f.write(f"Test samples: {len(X_test)}\n\n")
-        f.write("RANDOM FOREST\n")
-        f.write(f"Test Accuracy: {test_acc_rf:.4f}\n")
-        f.write(f"Test F1-score: {test_f1_rf:.4f}\n\n")
-        f.write("LOGISTIC REGRESSION\n")
-        f.write(f"Test Accuracy: {test_acc_lr:.4f}\n")
-        f.write(f"Test F1-score: {test_f1_lr:.4f}\n")
+        f.write("RISK LEVEL MODEL\n")
+        f.write(f"Test Accuracy: {risk_acc:.4f}\n")
+        f.write(f"Test F1-score: {risk_f1:.4f}\n\n")
+        f.write("CRIME TYPE MODEL\n")
+        f.write(f"Test Accuracy: {crime_acc:.4f}\n")
+        f.write(f"Test F1-score: {crime_f1:.4f}\n")
     
     print("Training completed")
 

@@ -14,31 +14,39 @@ Predict Risk Level (Low/Medium/High) for a given location (latitude, longitude) 
 
 ### Dataset Description
 
-The project uses multiple crime datasets from Kaggle containing historical crime records with precise location coordinates and temporal information. The datasets include:
+The project uses a super dataset created by merging multiple crime datasets from Kaggle containing historical crime records with location and temporal information. The datasets include:
 
-- **Date/Time**: Timestamp of crime incidents
-- **Location**: Precise latitude and longitude coordinates for each incident
-- **Crime Type**: Primary type of crime (optional, for analysis)
+- **Date/Time**: Timestamp of crime incidents (or Year/Month for older datasets)
+- **Location**: City and State information (location-based approach)
+- **Crime Type**: Type of crime for each incident
 
 ### Dataset Links
 
-1. **Chicago Crime Data**: https://www.kaggle.com/datasets/currie32/crimes-in-chicago
-   - Contains precise lat/lon coordinates for each crime incident
-   - Large dataset with detailed location information
+1. **US Homicide Dataset (1980-2004)**: https://www.kaggle.com/datasets/mrayushagrawal/us-crime-dataset/
+   - Historical data spanning 24 years
+   - Contains Year, Month, City, State, Crime Type
 
-2. **San Francisco Crime Data**: https://www.kaggle.com/datasets/wosaku/crime-in-san-francisco
-   - Contains precise coordinates (X/Y columns)
-   - Medium-sized dataset with comprehensive crime records
+2. **Chicago Crime Data**: https://www.kaggle.com/datasets/currie32/crimes-in-chicago
+   - Large dataset with Date, City, State, Crime Type
 
-*Note: Datasets should be downloaded and saved as `data/chicago_crime.csv` and `data/sf_crime.csv` before running the data pipeline. See DATASET_DOWNLOAD.md for instructions.*
+3. **Los Angeles Crime Data**: https://www.kaggle.com/datasets/cityofLA/crime-in-los-angeles
+   - Contains Date, City, State, Crime Type
+
+4. **Boston Crime Data**: https://www.kaggle.com/datasets/AnalyzeBoston/crimes-in-boston
+   - Contains Date, City, State, Crime Type
+
+5. **Philadelphia Crime Data**: https://www.kaggle.com/datasets/mchirico/philadelphiacrimedata
+   - Contains Date, City, State, Crime Type
+
+*Note: All datasets are merged into a super dataset using `src/00_create_super_dataset.py`. See DATASET_DOWNLOAD.md for detailed instructions.*
 
 ### Data Characteristics
 
 - **Format**: CSV (Comma-Separated Values)
-- **Required Columns**: date/time, latitude, longitude
-- **Optional Columns**: primary_type, category
-- **Preprocessing**: Missing values in essential columns are removed, invalid coordinates are filtered out
-- **Location Precision**: Datasets contain precise coordinates (not city-level), enabling accurate location-based predictions
+- **Required Columns**: date/time (or Year/Month), city, state
+- **Optional Columns**: crime_type, time
+- **Preprocessing**: Missing columns are handled gracefully (set to null), datasets are merged into super dataset
+- **Location Approach**: Location-based (city/state) rather than coordinate-based, enabling city-level risk predictions
 
 ### Data Processing Pipeline
 
@@ -103,7 +111,8 @@ The system follows a standard machine learning pipeline:
 ### Feature Set
 
 - **Temporal Features**: `hour` (0-23), `day_of_week` (0-6), `month` (1-12), `year`
-- **Spatial Features**: `grid_lat`, `grid_lon` (binned coordinates), `grid_cell` (unique identifier)
+- **Location Features**: `location_encoded` (encoded city/state), `city`, `state`
+- **Crime Type Features**: `crime_type_encoded`, `crime_type_frequency` (frequency of crime type in location)
 - **Historical Features**: `past_crime_count`, `crime_count_30d` (rolling window counts)
 
 ### Evaluation Metrics

@@ -1,8 +1,9 @@
 import pandas as pd
 import numpy as np
 import os
+from sklearn.preprocessing import LabelEncoder
 
-def engineer_features(input_path='data/clean.csv', output_path='data/features.csv', grid_precision=3):
+def engineer_features(input_path='data/clean.csv', output_path='data/features.csv'):
     if not os.path.exists(input_path):
         print(f"Error: {input_path} not found")
         return None
@@ -10,26 +11,38 @@ def engineer_features(input_path='data/clean.csv', output_path='data/features.cs
     df = pd.read_csv(input_path)
     df['date'] = pd.to_datetime(df['date'])
     
-    features_df = df[['date', 'latitude', 'longitude']].copy()
+    features_df = df[['date', 'location', 'city', 'state', 'crime_type']].copy()
     
-    features_df['hour'] = df['date'].dt.hour
+    features_df['hour'] = df['hour'] if 'hour' in df.columns else df['date'].dt.hour
     features_df['day_of_week'] = df['date'].dt.dayofweek
     features_df['month'] = df['date'].dt.month
     features_df['year'] = df['date'].dt.year
     
-    features_df['grid_lat'] = features_df['latitude'].round(grid_precision)
-    features_df['grid_lon'] = features_df['longitude'].round(grid_precision)
-    features_df['grid_cell'] = features_df['grid_lat'].astype(str) + '_' + features_df['grid_lon'].astype(str)
+    location_encoder = LabelEncoder()
+    features_df['location_encoded'] = location_encoder.fit_transform(features_df['location'])
+    
+    crime_type_encoder = LabelEncoder()
+    features_df['crime_type_encoded'] = crime_type_encoder.fit_transform(
+        features_df['crime_type'].fillna('Unknown')
+    )
+    
+    crime_type_counts = features_df.groupby('location')['crime_type'].value_counts().reset_index(name='crime_type_frequency')
+    features_df = features_df.merge(
+        crime_type_counts,
+        on=['location', 'crime_type'],
+        how='left'
+    )
+    features_df['crime_type_frequency'] = features_df['crime_type_frequency'].fillna(0)
     
     features_df = features_df.sort_values('date').reset_index(drop=True)
-    features_df['past_crime_count'] = features_df.groupby('grid_cell').cumcount()
+    features_df['past_crime_count'] = features_df.groupby('location').cumcount()
     
     features_df = features_df.sort_values('date')
     features_df['count_helper'] = 1
     
     result_dfs = []
-    for grid_cell in features_df['grid_cell'].unique():
-        group = features_df[features_df['grid_cell'] == grid_cell].copy()
+    for location in features_df['location'].unique():
+        group = features_df[features_df['location'] == location].copy()
         group = group.sort_values('date').set_index('date')
         rolling_counts = group['count_helper'].rolling('30D', closed='left').sum().fillna(0)
         group['crime_count_30d'] = rolling_counts.astype(int)
@@ -41,9 +54,9 @@ def engineer_features(input_path='data/clean.csv', output_path='data/features.cs
     
     final_features = features_df[[
         'hour', 'day_of_week', 'month', 'year',
-        'grid_lat', 'grid_lon', 'grid_cell',
+        'location_encoded', 'crime_type_encoded', 'crime_type_frequency',
         'past_crime_count', 'crime_count_30d',
-        'latitude', 'longitude', 'date'
+        'location', 'crime_type', 'date'
     ]].copy()
     
     os.makedirs(os.path.dirname(output_path), exist_ok=True)

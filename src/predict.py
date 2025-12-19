@@ -2,10 +2,8 @@ import pandas as pd
 import numpy as np
 import pickle
 import os
-import sys
 from datetime import datetime
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from sklearn.preprocessing import LabelEncoder
 
 def load_models(model_dir='outputs'):
     with open(os.path.join(model_dir, 'risk_model.pkl'), 'rb') as f:
@@ -22,7 +20,6 @@ def load_location_encoder():
     features_path = 'data/features.csv'
     if os.path.exists(features_path):
         df = pd.read_csv(features_path)
-        from sklearn.preprocessing import LabelEncoder
         le = LabelEncoder()
         le.fit(df['location'].unique())
         return le
@@ -43,6 +40,8 @@ def get_crime_statistics(location, features_path='data/features.csv'):
     
     crime_freq = {}
     for crime_type, count in crime_counts.items():
+        if pd.isna(crime_type) or crime_type == 'nan':
+            continue
         freq_pct = (count / total_crimes) * 100
         if freq_pct > 30:
             freq_label = 'Very Common'
@@ -62,7 +61,7 @@ def get_crime_statistics(location, features_path='data/features.csv'):
     return {
         'total_crimes': total_crimes,
         'crime_frequency': crime_freq,
-        'most_common': crime_counts.most_common(1)[0][0] if len(crime_counts) > 0 else None
+        'most_common': list(crime_counts.keys())[0] if len(crime_counts) > 0 else None
     }
 
 def create_features_from_input(location, day_of_week, hour, month, year):
@@ -123,19 +122,3 @@ def predict_comprehensive(location, day_of_week, hour, month=None, year=None, mo
     
     return result
 
-if __name__ == "__main__":
-    import sys
-    
-    if len(sys.argv) > 1:
-        location = sys.argv[1]
-        day = int(sys.argv[2]) if len(sys.argv) > 2 else 0
-        hour = int(sys.argv[3]) if len(sys.argv) > 3 else 12
-        
-        result = predict_comprehensive(location, day, hour)
-        print(f"Location: {location}")
-        print(f"Risk Level: {result['risk_level']}")
-        print(f"Predicted Crime Type: {result['predicted_crime_type']}")
-        print(f"Crime Statistics: {result['crime_statistics']}")
-    else:
-        print("Usage: python 05_predict.py <location> <day_of_week> <hour>")
-        print("Example: python 05_predict.py 'Chicago, IL' 0 14")
