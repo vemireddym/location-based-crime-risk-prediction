@@ -33,7 +33,7 @@ def load_and_standardize_dataset(filepath):
         try:
             df = pd.read_csv(filepath, encoding='latin-1', low_memory=False)
         except:
-            return None, {}
+            return None, {}, {}
     
     missing_cols = {}
     auto_filled = {}
