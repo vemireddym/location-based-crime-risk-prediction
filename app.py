@@ -4,6 +4,7 @@ import numpy as np
 import pickle
 import os
 import sys
+import traceback
 from datetime import datetime, timedelta
 import plotly.express as px
 import plotly.graph_objects as go
@@ -12,24 +13,44 @@ from geopy.exc import GeocoderTimedOut, GeocoderServiceError
 import folium
 from streamlit_folium import st_folium
 
-sys.path.append('src')
+# Add error logging
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 try:
-    from predict import predict_comprehensive, get_crime_statistics
-except ImportError:
-    import importlib.util
-    spec = importlib.util.spec_from_file_location("predict", "src/predict.py")
-    predict_module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(predict_module)
-    predict_comprehensive = predict_module.predict_comprehensive
-    get_crime_statistics = predict_module.get_crime_statistics
-
-
-st.set_page_config(
-    page_title="Crime Risk Prediction",
-    page_icon="🚨",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+    logger.info("Starting app initialization...")
+    sys.path.append('src')
+    
+    try:
+        from predict import predict_comprehensive, get_crime_statistics
+        logger.info("Successfully imported from predict module")
+    except ImportError as e:
+        logger.warning(f"Import failed, trying alternative method: {e}")
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("predict", "src/predict.py")
+        if spec is None or spec.loader is None:
+            raise ImportError(f"Could not load predict module: {e}")
+        predict_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(predict_module)
+        predict_comprehensive = predict_module.predict_comprehensive
+        get_crime_statistics = predict_module.get_crime_statistics
+        logger.info("Successfully loaded predict module via importlib")
+    
+    logger.info("Setting page config...")
+    st.set_page_config(
+        page_title="Crime Risk Prediction",
+        page_icon=None,
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
+    logger.info("Page config set successfully")
+except Exception as e:
+    logger.error(f"Error during initialization: {e}")
+    logger.error(traceback.format_exc())
+    st.error(f"Error initializing app: {str(e)}")
+    st.code(traceback.format_exc())
+    st.stop()
 
 st.markdown("""
 <style>
@@ -169,10 +190,10 @@ def main():
             except:
                 pass  # File exists and is binary, likely OK
     
-    st.markdown('<h1 class="main-header">🚨 Crime Risk Prediction System</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-header">Crime Risk Prediction System</h1>', unsafe_allow_html=True)
     st.markdown('<p class="sub-header">Predict crime risk levels and types for any location and time</p>', unsafe_allow_html=True)
     
-    st.sidebar.markdown("## 📍 Location")
+    st.sidebar.markdown("## Location")
     location_input = st.sidebar.text_input(
         "Enter location (City, State)",
         placeholder="e.g., Chicago, IL",
@@ -180,7 +201,7 @@ def main():
     )
     
     lat, lon, address = None, None, None
-    if st.sidebar.button("🔍 Get Coordinates", use_container_width=True):
+    if st.sidebar.button("Get Coordinates", use_container_width=True):
         if location_input:
             with st.spinner("Searching..."):
                 lat, lon, address = geocode_location(location_input)
@@ -199,7 +220,7 @@ def main():
     else:
         location = location_input if location_input else None
     
-    st.sidebar.markdown("## 📅 Date & Time")
+    st.sidebar.markdown("## Date & Time")
     selected_date = st.sidebar.date_input("Select Date", datetime.now())
     selected_hour = st.sidebar.slider("Select Hour", 0, 23, datetime.now().hour, format="%d:00")
     
@@ -208,7 +229,7 @@ def main():
     year = selected_date.year
     
     if not location:
-        st.info("👈 Enter a location in the sidebar to get predictions")
+        st.info("Enter a location in the sidebar to get predictions")
         return
     
     try:
@@ -217,9 +238,9 @@ def main():
         col1, col2 = st.columns([1, 1])
         
         with col1:
-            st.markdown("### 🎯 Risk Level Prediction")
+            st.markdown("### Risk Level Prediction")
             risk_class = f"risk-{result['risk_level'].lower()}"
-            st.markdown(f'<div class="{risk_class}">⚠️ {result["risk_level"].upper()} RISK</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="{risk_class}">{result["risk_level"].upper()} RISK</div>', unsafe_allow_html=True)
             
             risk_proba = result['risk_probabilities']
             fig_risk = go.Figure(data=[
@@ -240,7 +261,7 @@ def main():
             st.plotly_chart(fig_risk, use_container_width=True)
         
         with col2:
-            st.markdown("### 🔍 Crime Type Prediction")
+            st.markdown("### Crime Type Prediction")
             crime_type = result['predicted_crime_type']
             crime_prob = result['crime_type_probability'] * 100
             
@@ -254,7 +275,7 @@ def main():
                     st.metric("Most Common Crime Type", stats['most_common'])
         
         st.markdown("---")
-        st.markdown("### 📊 Crime Frequency Statistics")
+        st.markdown("### Crime Frequency Statistics")
         
         if result.get('crime_statistics') and result['crime_statistics'].get('crime_frequency'):
             crime_freq = result['crime_statistics']['crime_frequency']
@@ -283,12 +304,13 @@ def main():
         
         if lat and lon:
             st.markdown("---")
-            st.markdown("### 🗺️ Location Map")
+            st.markdown("### Location Map")
             risk_map = create_map(lat, lon, result['risk_level'], location)
             st_folium(risk_map, width=None, height=400)
         
     except FileNotFoundError as e:
-        st.error("⚠️ Model files not found!")
+        logger.error(f"FileNotFoundError: {e}")
+        st.error("Model files not found!")
         st.warning(
             "The prediction models have not been trained yet. Please run the training pipeline:\n\n"
             "1. Run the data pipeline:\n"
@@ -307,8 +329,9 @@ def main():
         st.error(f"Technical details: {str(e)}")
     except ValueError as e:
         error_msg = str(e)
+        logger.error(f"ValueError: {error_msg}")
         if "corrupted" in error_msg.lower() or "incomplete" in error_msg.lower():
-            st.error("⚠️ Model files are corrupted!")
+            st.error("Model files are corrupted!")
             st.warning(
                 "The model files appear to be corrupted or incomplete. Please retrain the models:\n\n"
                 "```bash\n"
@@ -319,38 +342,46 @@ def main():
         else:
             st.error(f"Error: {error_msg}")
     except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        logger.error(traceback.format_exc())
         st.error(f"Error making prediction: {e}")
+        st.code(traceback.format_exc())
         st.info("Make sure the models are trained. Run the training pipeline first.")
     
     st.markdown("---")
     st.markdown("""
     <div style='text-align: center; color: #666; padding: 20px;'>
-        <p>🚨 Crime Risk Prediction System | Built with Streamlit</p>
-        <p>⚠️ This is a prediction tool based on historical data. Actual crime risk may vary.</p>
-        <p style='margin-top: 15px; font-size: 0.9rem;'>© 2025 Vemireddy. All Rights Reserved.</p>
+        <p>Crime Risk Prediction System | Built with Streamlit</p>
+        <p>This is a prediction tool based on historical data. Actual crime risk may vary.</p>
+        <p style='margin-top: 15px; font-size: 0.9rem;'>Copyright 2025 Vemireddy. All Rights Reserved.</p>
     </div>
     """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     try:
+        logger.info("Calling main() function...")
         main()
+        logger.info("Main function completed successfully")
     except Exception as e:
+        error_msg = str(e)
+        error_trace = traceback.format_exc()
+        logger.error(f"Fatal error in main(): {error_msg}")
+        logger.error(error_trace)
+        print(f"FATAL ERROR: {error_msg}", file=sys.stderr)
+        print(error_trace, file=sys.stderr)
+        
         st.error("An error occurred while running the app")
-        st.exception(e)
+        st.error(f"Error: {error_msg}")
+        st.code(error_trace)
         st.info("""
-        **Common Issues:**
-        1. **Missing model files**: If you just cloned the repo, Git LFS files need to be downloaded:
-           ```bash
+        Common Issues:
+        1. Missing model files: If you just cloned the repo, Git LFS files need to be downloaded:
            git lfs pull
-           ```
-        2. **Missing data files**: Run the data pipeline:
-           ```bash
+        2. Missing data files: Run the data pipeline:
            python src/00_create_super_dataset.py
            python src/01_load_clean.py
            python src/02_features.py
-           ```
-        3. **Missing dependencies**: Install requirements:
-           ```bash
+        3. Missing dependencies: Install requirements:
            pip install -r requirements.txt
-           ```
+        4. Import errors: Check if all modules are available
         """)
