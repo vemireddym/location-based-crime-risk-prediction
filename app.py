@@ -23,6 +23,7 @@ except ImportError:
     predict_comprehensive = predict_module.predict_comprehensive
     get_crime_statistics = predict_module.get_crime_statistics
 
+
 st.set_page_config(
     page_title="Crime Risk Prediction",
     page_icon="🚨",
@@ -146,6 +147,28 @@ def create_map(lat, lon, risk_level, location_name):
     return m
 
 def main():
+    # Check for Git LFS files (if they're pointers, they need to be downloaded)
+    lfs_files = ['outputs/crime_model.pkl', 'outputs/risk_model.pkl']
+    for file in lfs_files:
+        if os.path.exists(file):
+            try:
+                # Try to read first few bytes - if it's a text pointer, it's not downloaded
+                with open(file, 'rb') as f:
+                    first_bytes = f.read(50)
+                    if b'version https://git-lfs.github.com' in first_bytes:
+                        st.error("Git LFS files not downloaded!")
+                        st.warning(f"""
+                        The file {file} appears to be a Git LFS pointer, not the actual file.
+                        Please run:
+                        ```bash
+                        git lfs pull
+                        ```
+                        This will download the actual model files.
+                        """)
+                        return
+            except:
+                pass  # File exists and is binary, likely OK
+    
     st.markdown('<h1 class="main-header">🚨 Crime Risk Prediction System</h1>', unsafe_allow_html=True)
     st.markdown('<p class="sub-header">Predict crime risk levels and types for any location and time</p>', unsafe_allow_html=True)
     
@@ -309,4 +332,25 @@ def main():
     """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        st.error("An error occurred while running the app")
+        st.exception(e)
+        st.info("""
+        **Common Issues:**
+        1. **Missing model files**: If you just cloned the repo, Git LFS files need to be downloaded:
+           ```bash
+           git lfs pull
+           ```
+        2. **Missing data files**: Run the data pipeline:
+           ```bash
+           python src/00_create_super_dataset.py
+           python src/01_load_clean.py
+           python src/02_features.py
+           ```
+        3. **Missing dependencies**: Install requirements:
+           ```bash
+           pip install -r requirements.txt
+           ```
+        """)
