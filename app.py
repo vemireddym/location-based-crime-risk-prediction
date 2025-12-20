@@ -187,8 +187,38 @@ def main():
                         This will download the actual model files.
                         """)
                         return
-            except:
-                pass  # File exists and is binary, likely OK
+            except Exception as e:
+                logger.warning(f"Could not check file {file}: {e}")
+    
+    # Try to load models at startup to catch errors early
+    try:
+        logger.info("Testing model loading...")
+        # Import load_models to test if models can be loaded
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("predict", "src/predict.py")
+        if spec is None or spec.loader is None:
+            raise ImportError("Could not load predict module")
+        predict_test = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(predict_test)
+        predict_test.load_models('outputs')
+        logger.info("Models loaded and tested successfully")
+    except Exception as e:
+        logger.error(f"Error loading models: {e}")
+        logger.error(traceback.format_exc())
+        st.error("Error: Could not load prediction models")
+        st.error(f"Details: {str(e)}")
+        st.code(traceback.format_exc())
+        st.warning("""
+        The model files may be missing or corrupted. Please ensure:
+        1. Model files are downloaded via Git LFS
+        2. All required files exist in the outputs/ directory:
+           - risk_model.pkl
+           - crime_model.pkl
+           - risk_encoder.pkl
+           - crime_encoder.pkl
+        3. Files are not corrupted
+        """)
+        return
     
     st.markdown('<h1 class="main-header">Crime Risk Prediction System</h1>', unsafe_allow_html=True)
     st.markdown('<p class="sub-header">Predict crime risk levels and types for any location and time</p>', unsafe_allow_html=True)
