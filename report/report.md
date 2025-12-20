@@ -128,6 +128,11 @@ The Location-Based Crime Risk Prediction System successfully demonstrates that m
 
 The system has practical applications in public safety planning, resource allocation, and helping individuals make informed decisions. The location-based approach makes it accessible to users who may not be familiar with coordinate systems.
 
+A live web application has been deployed and is available at:
+https://v-location-based-crime-risk-prediction-nmgxrfwqdfuhq3wvo4qvso.streamlit.app/
+
+The web application provides an interactive interface where users can enter a location, select a date and time, and receive instant predictions for both risk level and crime type. The application includes visualizations, maps, and detailed statistics to help users understand the predictions.
+
 The modular design of the system allows for future enhancements. Additional features such as weather data, population density, or proximity to landmarks could potentially improve predictions further. The system could also be extended to use time series models for better temporal pattern recognition.
 
 Future Work:

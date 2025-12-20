@@ -2,6 +2,10 @@
 
 A machine learning system that predicts crime risk levels (Low/Medium/High) and crime types for specific locations and times using historical crime data. Features an interactive web application built with Streamlit.
 
+## Live Application
+
+Access the web application at: https://v-location-based-crime-risk-prediction-nmgxrfwqdfuhq3wvo4qvso.streamlit.app/
+
 ## Problem Statement
 
 This project develops a machine learning system that predicts crime risk levels for specific locations and times. The system takes a location (city and state) along with temporal information (day of week, hour, month, year) as input and outputs a predicted risk level (Low, Medium, or High) and the most likely type of crime.
