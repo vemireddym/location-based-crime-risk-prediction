@@ -2,8 +2,12 @@ import pandas as pd
 import numpy as np
 import pickle
 import os
+import warnings
 from datetime import datetime
 from sklearn.preprocessing import LabelEncoder
+
+# Suppress scikit-learn version mismatch warnings
+warnings.filterwarnings('ignore', category=UserWarning, module='sklearn')
 
 def load_models(model_dir='outputs'):
     required_files = {
@@ -32,8 +36,10 @@ def load_models(model_dir='outputs'):
             )
         
         try:
-            with open(filepath, 'rb') as f:
-                models[name] = pickle.load(f)
+            with warnings.catch_warnings():
+                warnings.filterwarnings('ignore', category=UserWarning)
+                with open(filepath, 'rb') as f:
+                    models[name] = pickle.load(f)
         except pickle.UnpicklingError as e:
             raise ValueError(
                 f"Error loading model file: {filepath}\n"
@@ -100,12 +106,14 @@ def get_crime_statistics(location, features_path='data/features.csv'):
 def create_features_from_input(location, day_of_week, hour, month, year):
     location_encoder = load_location_encoder()
     if location_encoder is None:
-        raise ValueError("Location encoder not found. Run feature engineering first.")
-    
-    try:
-        location_encoded = location_encoder.transform([location])[0]
-    except:
+        # If location encoder not available, use a default encoding
+        # This allows the app to work even without features.csv
         location_encoded = 0
+    else:
+        try:
+            location_encoded = location_encoder.transform([location])[0]
+        except:
+            location_encoded = 0
     
     features = pd.DataFrame({
         'hour': [hour],

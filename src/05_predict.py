@@ -3,7 +3,11 @@ import numpy as np
 import pickle
 import os
 import sys
+import warnings
 from datetime import datetime
+
+# Suppress scikit-learn version mismatch warnings
+warnings.filterwarnings('ignore', category=UserWarning, module='sklearn')
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -34,8 +38,10 @@ def load_models(model_dir='outputs'):
             )
         
         try:
-            with open(filepath, 'rb') as f:
-                models[name] = pickle.load(f)
+            with warnings.catch_warnings():
+                warnings.filterwarnings('ignore', category=UserWarning)
+                with open(filepath, 'rb') as f:
+                    models[name] = pickle.load(f)
         except pickle.UnpicklingError as e:
             raise ValueError(
                 f"Error loading model file: {filepath}\n"
